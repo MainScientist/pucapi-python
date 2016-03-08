@@ -8,21 +8,6 @@ def prettify(text):
     return BeautifulSoup(text, "html.parser").prettify()
 
 
-def login():
-    username = "fipezoa"
-    password = "FelipeI07"
-    portal_url = "http://portal.uc.cl"
-    req2 = session.get(portal_url)
-    session.cookies.update(dict(IDMSESSID="14B53FC0B98FDA10E05400144FF895FB"))
-    page_data = find_data(req2.content.decode("UTF-8"))
-    post_data = {"execution": page_data["execution"],
-                 "_eventId": page_data["_eventId"],
-                 "lt": page_data["lt"],
-                 "username": username,
-                 "password": password}
-    req3 = session.post("https://sso.uc.cl" + page_data["action"], data=post_data)
-
-
 def obtener_portlet_busca_personas():
     data = {
             "currentUrl": "/web/home-community/inicio?gpi=10225",
