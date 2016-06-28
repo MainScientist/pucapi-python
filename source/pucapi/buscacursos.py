@@ -28,7 +28,7 @@ def buscar_cursos(semestre="2016-1", sigla="", nombre="", profesor="", campus="T
             query["cxml_modulo_"+modulo] = modulo
     url = "http://buscacursos.uc.cl/?" + urlencode(query)
     response = requests.get(url)
-    page = BeautifulSoup(response.content.decode("windows_1252"), "html.parser")
+    page = BeautifulSoup(response.content.decode("utf-8"), "html.parser")
     academic_units = page.find_all("td", {"style": "text-align:center; font-weight:bold; font-size:16px; color:#FFFFFF;"
                                                    " background:#1730A6; padding:2px; margin:2px"})
     academic_dic = {}
@@ -45,13 +45,15 @@ def buscar_cursos(semestre="2016-1", sigla="", nombre="", profesor="", campus="T
                 max = key
                 academic_unit = academic_dic[key]
         tds = tr.find_all("td")
-        r = Ramo(nombre=str(tds[6].text), nrc=str(tds[0].text), creditos=str(tds[9].text), seccion=int(tds[4].text),
-                 profesores=str(tds[7].text.split(",")), sigla=str(tds[1].text.replace(" ", "")),
+        r = Ramo(nombre=str(tds[7].text), nrc=str(tds[0].text), creditos=str(tds[10].text), seccion=int(tds[4].text),
+                 profesores=str(tds[8].text.split(",")), sigla=str(tds[1].text.replace(" ", "")),
                  programa=buscar_programa(tds[1].text.replace(" ", "")),
-                 requisitos=buscar_requisitos(sigla), campus=tds[8].text, unidad_academica=academic_unit)
+                 requisitos=buscar_requisitos(sigla), campus=tds[9].text, unidad_academica=academic_unit)
         if len(tds) > 15:
-            i = 14
+            tds = tds[14].find_all("td")
+            i = 0
             while i <= len(tds) - 3:
+                print(tds[i].text)
                 days, modulos = tds[i].text.split(":")
                 tipo = tds[i+1].text
                 sala = tds[i+2].text
