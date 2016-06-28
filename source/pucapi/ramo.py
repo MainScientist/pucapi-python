@@ -1,11 +1,11 @@
 class Ramo:
 
-    def __init__(self, nombre, nrc, creditos, seccion, profesores, sigla="", tipo="", requisitos="",
-                 programa="", cupos_totales=0, cupos_disponibles=0, campus="", unidad_academica=""):
+    def __init__(self, nombre, nrc, creditos, seccion, profesores, sigla="", requisitos="",
+                 programa="", cupos_totales=0, cupos_disponibles=0, campus="", unidad_academica="",
+                 categoria="", modulos=None, retirable=False, en_ingles=False, aprob_especial=False):
         self.nombre = nombre
         self.creditos = creditos
         self.sigla = sigla
-        self.tipo = tipo
         self.requisitos = requisitos  # Class
         self.nrc = nrc
         self.seccion = seccion
@@ -14,8 +14,14 @@ class Ramo:
         self.cupos_totales = cupos_totales  # Make class
         self.cupos_disponibles = cupos_disponibles  # Make class
         self.campus = campus
-        self.modulos = []
+        self.modulos = modulos if modulos else []
+        for m in self.modulos:
+            m.ramo = self
         self.unidad_academica = unidad_academica
+        self.categoria = categoria
+        self.retirable = retirable
+        self.en_ingles = en_ingles
+        self.aprob_especial = aprob_especial
 
     @property
     def horario(self):

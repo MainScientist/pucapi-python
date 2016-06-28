@@ -4,6 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 from pucapi.ramo import Ramo
 from pucapi.requisitos import Requisito
+from pucapi.const import *
 
 from pucapi.modulo import Modulo
 
@@ -26,43 +27,45 @@ def buscar_cursos(semestre="2016-1", sigla="", nombre="", profesor="", campus="T
     if modulos is not None:
         for modulo in modulos:
             query["cxml_modulo_"+modulo] = modulo
+
     url = "http://buscacursos.uc.cl/?" + urlencode(query)
     response = requests.get(url)
     page = BeautifulSoup(response.content.decode("utf-8"), "html.parser")
-    academic_units = page.find_all("td", {"style": "text-align:center; font-weight:bold; font-size:16px; color:#FFFFFF;"
-                                                   " background:#1730A6; padding:2px; margin:2px"})
-    academic_dic = {}
-    for academic_unit in academic_units:
-        academic_dic[str(page).index(str(academic_unit))] = academic_unit.text
-    trs = page.find_all("tr", {"class": "resultadosRowImpar"}) + page.find_all("tr", {"class": "resultadosRowPar"})
+    table = page.find_all("table")[BUSCACURSOS_TABLE_NUMBER]
+    table_rows = table.find_all("tr", recursive=False)
+
+    headers = get_headers(table_rows)
+
     results = []
-    for tr in trs:
-        max = 0
-        academic_unit = ""
-        tr_index = str(page).index(str(tr))
-        for key in academic_dic:
-            if tr_index > key > max:
-                max = key
-                academic_unit = academic_dic[key]
-        tds = tr.find_all("td")
-        r = Ramo(nombre=str(tds[7].text), nrc=str(tds[0].text), creditos=str(tds[10].text), seccion=int(tds[4].text),
-                 profesores=str(tds[8].text.split(",")), sigla=str(tds[1].text.replace(" ", "")),
-                 programa=buscar_programa(tds[1].text.replace(" ", "")),
-                 requisitos=buscar_requisitos(sigla), campus=tds[9].text, unidad_academica=academic_unit)
-        if len(tds) > 15:
-            tds = tds[14].find_all("td")
-            i = 0
-            while i <= len(tds) - 3:
-                print(tds[i].text)
-                days, modulos = tds[i].text.split(":")
-                tipo = tds[i+1].text
-                sala = tds[i+2].text
-                for day in days.split("-"):
-                    for modulo in modulos.split(","):
-                        r.modulos.append(Modulo(day, modulo, sala, tipo, r))
-                i += 3
-        results.append(r)
-    return sorted(results, key=lambda ramo: (ramo.unidad_academica, ramo.sigla, ramo.seccion))
+    _unidad_academica = ""
+    for i in range(len(table_rows)):
+        row = table_rows[i]
+        if row.attrs == {}:
+            _unidad_academica = row.text.strip()
+        if "class" in row.attrs and row["class"][0] in BUSCACURSOS_RESULT_CLASSES:
+            data = row.find_all("td", recursive=False)
+            _nombre = data[headers[BUSCACURSOS_NOMBRE]].text.strip()
+            _nrc = data[headers[BUSCACURSOS_NRC]].text.strip()
+            _seccion = data[headers[BUSCACURSOS_SECCION]].text.strip()
+            _sigla = data[headers[BUSCACURSOS_SIGLA]].text.strip()
+            _aprob_especial = data[headers[BUSCACURSOS_APROB_ESPECIAL]].text.strip()
+            _profesores = data[headers[BUSCACURSOS_PROFESOR]].text.strip().split(",")
+            _perm_retiro = data[headers[BUSCACURSOS_RETIRO]].text.strip()
+            _campus = data[headers[BUSCACURSOS_CAMPUS]].text.strip()
+            _categoria = data[headers[BUSCACURSOS_CATEGORIA]].text.strip()
+            _en_ingles = data[headers[BUSCACURSOS_INGLES]].text.strip()
+
+            _creditos = int(data[headers[BUSCACURSOS_CREDITOS]].text)
+
+            _requisitos = buscar_requisitos(_sigla)
+            _programa = buscar_programa(_sigla)
+            _modulos = get_modulos(data[headers[BUSCACURSOS_HORARIO] + 2])
+
+            ramo = Ramo(_nombre, _nrc, _creditos, _seccion, _profesores, _sigla, _requisitos, _programa, 0, 0, _campus,
+                        _unidad_academica, _categoria, _modulos, _perm_retiro, _en_ingles, _aprob_especial)
+
+            results.append(ramo)
+    return results
 
 
 def buscar_curso(semestre="2016-1", seccion="1", sigla="", nombre="", profesor="", campus="TODOS", unidad_academica="TODOS",
@@ -74,6 +77,31 @@ def buscar_curso(semestre="2016-1", seccion="1", sigla="", nombre="", profesor="
                 return ramo
         else:
             return ramos[0]
+
+
+def get_headers(table_rows):
+    if table_rows == 0:
+        return []
+    table_headers = table_rows[1].find_all("td", recursive=False)
+    headers = {}
+    for i in range(len(table_headers)):
+        data = table_headers[i]
+        headers[data.text] = i
+    return headers
+
+
+def get_modulos(data):
+    modulos = []
+    table_rows = data.find_all("tr")
+    for row in table_rows:
+        data = row.find_all("td")
+        dias, ms = data[0].text.split(":")
+        tipo = data[1].text
+        sala = data[2].text
+        for day in dias.split("-"):
+            for modulo in ms.split(","):
+                modulos.append(Modulo(day.strip(), int(modulo), sala.strip(), tipo.strip(), None))
+    return modulos
 
 
 def buscar_programa(sigla):
